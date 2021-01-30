@@ -9,12 +9,10 @@ import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
-import android.media.browse.MediaBrowser
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
-import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -75,7 +73,7 @@ class PlayerService : MediaBrowserServiceCompat() {
             return
 
         val songId = mediaId.toLong()
-        val contentUri = ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
+        val contentUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
         mediaPlayer.reset()
         mediaPlayer.setDataSource(applicationContext, contentUri)
@@ -172,7 +170,7 @@ class PlayerService : MediaBrowserServiceCompat() {
     }
 
     private fun getArtForSongId(id: Long): Bitmap? {
-        val songUri = ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+        val songUri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
         val mmr = MediaMetadataRetriever()
         val rawArt: ByteArray?
 

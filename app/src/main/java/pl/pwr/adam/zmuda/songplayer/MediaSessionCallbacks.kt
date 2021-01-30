@@ -16,13 +16,11 @@ import android.media.MediaPlayer
 import android.os.Bundle
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.media.session.MediaButtonReceiver
 
-class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaSessionCompat, val mediaPlayer: MediaPlayer) : MediaSessionCompat.Callback(), AudioManager.OnAudioFocusChangeListener {
+class MediaSessionCallbacks(private val service: PlayerService, private val mediaSession: MediaSessionCompat, private val mediaPlayer: MediaPlayer) : MediaSessionCompat.Callback(), AudioManager.OnAudioFocusChangeListener {
 
     companion object {
         const val NOTIFICATION_ID = 1
@@ -31,7 +29,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     private var becomeNoisyRegistered: Boolean = false
     private val intentFilter = IntentFilter(ACTION_AUDIO_BECOMING_NOISY)
-    val context = service.baseContext
+    private val context = service.baseContext
 
     private lateinit var audioFocusRequest: AudioFocusRequest
 
@@ -43,9 +41,9 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
         }
     }
 
-    val becomingNoisyReceiver = object : BroadcastReceiver() {
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+            if (intent.action == ACTION_AUDIO_BECOMING_NOISY) {
                 onPause()
             }
         }
@@ -53,7 +51,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     override fun onPlay() {
         if (mediaSession.controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING) //prevent double clicks
-            return;
+            return
 
         val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -89,7 +87,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     override fun onPause() {
         if (mediaSession.controller.playbackState.state != PlaybackStateCompat.STATE_PLAYING) //prevent double clicks
-            return;
+            return
 
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         am.abandonAudioFocusRequest(audioFocusRequest)
@@ -113,7 +111,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     override fun onStop() {
         if (mediaSession.controller.playbackState.state == PlaybackStateCompat.STATE_STOPPED) //prevent double clicks
-            return;
+            return
 
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
@@ -186,7 +184,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     private fun createNotification() : Notification {
         val intent = Intent(context, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(context, 0, intent, 0);
+        val pendingIntent = PendingIntent.getActivity(context, 0, intent, 0)
 
         val description = mediaSession.controller.metadata.description
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)

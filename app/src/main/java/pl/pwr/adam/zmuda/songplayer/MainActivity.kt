@@ -4,24 +4,21 @@ import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.media.AudioManager
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.PlaybackStateCompat
-import android.util.Log
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DividerItemDecoration
-import kotlinx.coroutines.*
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import pl.pwr.adam.zmuda.songplayer.databinding.ActivityMainBinding
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
 
 
 class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
@@ -33,14 +30,12 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
     private lateinit var mediaBrowser: MediaBrowserCompat
     private lateinit var binding: ActivityMainBinding
 
-    private val executorService : ExecutorService = Executors.newSingleThreadExecutor()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        val dividerItemDecoration = DividerItemDecoration(binding.musicList.getContext(), DividerItemDecoration.VERTICAL)
+        val dividerItemDecoration = DividerItemDecoration(binding.musicList.context, DividerItemDecoration.VERTICAL)
         binding.musicList.addItemDecoration(dividerItemDecoration)
 
         mediaBrowser = MediaBrowserCompat(
@@ -53,7 +48,7 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
         binding.seekBar.setOnSeekBarChangeListener(this)
     }
 
-    var updateSeekBarJob : Job? = null
+    private var updateSeekBarJob : Job? = null
 
     private fun startUpdatingSeekBar() {
         stopUpdatingSeekBar()
@@ -76,7 +71,7 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
 
             val mediaController = MediaControllerCompat(
                 this@MainActivity,
-                mediaBrowser!!.sessionToken
+                mediaBrowser.sessionToken
             )
 
             MediaControllerCompat.setMediaController(this@MainActivity, mediaController)
@@ -165,7 +160,7 @@ class MainActivity : AppCompatActivity(), SeekBar.OnSeekBarChangeListener {
         super.onStart()
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_DENIED) {
-            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE), PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE), PERMISSION_REQUEST_CODE)
         }
         else {
             afterGainingPermissions()
