@@ -9,9 +9,12 @@ import android.graphics.BitmapFactory
 import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
+import android.media.browse.MediaBrowser
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+import android.support.v4.media.MediaDescriptionCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -23,19 +26,17 @@ class PlayerService : MediaBrowserServiceCompat() {
 
     companion object {
         const val LOG_TAG = "PlayerService_MediaSession"
-        const val EMPTY_MEDIA_ROOT_ID = "Empty_root"
+        const val MEDIA_ROOT_ID = "root"
     }
 
     private lateinit var mediaSession: MediaSessionCompat
     private lateinit var mediaPlayer: MediaPlayer
 
+    private lateinit var songs : MutableList<MediaMetadataCompat>
+    private var currentSongIndex = 0
+
     override fun onCreate() {
         super.onCreate()
-
-
-        val songs = loadSongs()//TODO
-        val songId = songs[0].description.mediaId!!.toLong()
-        val contentUri = ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
 
         mediaPlayer = MediaPlayer()
         mediaPlayer.setAudioAttributes(
@@ -44,8 +45,8 @@ class PlayerService : MediaBrowserServiceCompat() {
                 .setUsage(AudioAttributes.USAGE_MEDIA)
                 .build()
         )
-        mediaPlayer.setDataSource(applicationContext, contentUri)
-        mediaPlayer.prepare()
+
+        songs = loadSongs()
 
         mediaSession = MediaSessionCompat(baseContext, LOG_TAG)
 
@@ -53,13 +54,47 @@ class PlayerService : MediaBrowserServiceCompat() {
             .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_STOP)
             .build()
 
-        val metadataState = loadSongs()[0] //TODO
-
         mediaSession.setPlaybackState(playbackState)
-        mediaSession.setMetadata(metadataState)
+
+        setMedia(songs[currentSongIndex].description.mediaId!!)
 
         mediaSession.setCallback(MediaSessionCallbacks(this, mediaSession, mediaPlayer))
         sessionToken = mediaSession.sessionToken
+    }
+
+    fun setMedia(mediaId: String) {
+        var song : MediaMetadataCompat? = null
+        for (i in songs.indices) {
+            if (songs[i].description.mediaId == mediaId ) {
+                song = songs[i]
+                currentSongIndex = i
+            }
+        }
+
+        if (song == null)
+            return
+
+        val songId = mediaId.toLong()
+        val contentUri = ContentUris.withAppendedId(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId)
+
+        mediaPlayer.reset()
+        mediaPlayer.setDataSource(applicationContext, contentUri)
+        mediaPlayer.prepare()
+
+        mediaSession.setMetadata(song)
+    }
+
+    fun nextSong() {
+        currentSongIndex = (currentSongIndex + 1) % songs.size
+        setMedia(songs[currentSongIndex].description.mediaId!!)
+    }
+
+    fun prevSong() {
+        currentSongIndex--
+        if (currentSongIndex < 0)
+            currentSongIndex = songs.size - 1
+
+        setMedia(songs[currentSongIndex].description.mediaId!!)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -75,11 +110,22 @@ class PlayerService : MediaBrowserServiceCompat() {
     }
 
     override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        val mediaItems = mutableListOf<MediaBrowserCompat.MediaItem>()
+
+        if (parentId == MEDIA_ROOT_ID) {
+            for (song in songs) {
+                val item = MediaBrowserCompat.MediaItem(song.description, FLAG_PLAYABLE)
+                mediaItems.add(item)
+            }
+
+            return result.sendResult(mediaItems)
+        }
+
         return result.sendResult(null)
     }
 
     override fun onGetRoot(clientPackageName: String, clientUid: Int, rootHints: Bundle?): BrowserRoot? {
-        return BrowserRoot(EMPTY_MEDIA_ROOT_ID, null)
+        return BrowserRoot(MEDIA_ROOT_ID, null)
     }
 
     private fun loadSongs() : MutableList<MediaMetadataCompat> {

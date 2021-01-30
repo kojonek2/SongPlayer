@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">SongPlayer</string>
     <string name="read_permision_denied">App will not be able to locate music!</string>
+    <string name="reverse_10">-10</string>
+    <string name="forward_10">+10</string>
+    <string name="prev_track">prev</string>
+    <string name="next_track">next</string>
+    <string name="play_pause">play/pause</string>
+    <string name="stop">stop</string>
 </resources>

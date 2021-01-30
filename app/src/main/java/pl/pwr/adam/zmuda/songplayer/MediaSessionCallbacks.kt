@@ -13,6 +13,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.AudioManager.ACTION_AUDIO_BECOMING_NOISY
 import android.media.MediaPlayer
+import android.os.Bundle
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
@@ -36,12 +37,16 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
 
     init {
         createNotificationChannel()
+
+        mediaPlayer.setOnCompletionListener {
+            onSkipToNext()
+        }
     }
 
     val becomingNoisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             if (intent.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
-
+                onPause()
             }
         }
     }
@@ -73,7 +78,6 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
                     .setState(PlaybackStateCompat.STATE_PLAYING, mediaPlayer.currentPosition.toLong(), mediaPlayer.playbackParams.speed)
                     .build()
             )
-            Log.d("TEST", "${mediaPlayer.currentPosition}, {${mediaPlayer.isPlaying}}")
 
             context.registerReceiver(becomingNoisyReceiver, intentFilter)
             becomeNoisyRegistered = true
@@ -84,7 +88,7 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
     }
 
     override fun onPause() {
-        if (mediaSession.controller.playbackState.state == PlaybackStateCompat.STATE_PAUSED) //prevent double clicks
+        if (mediaSession.controller.playbackState.state != PlaybackStateCompat.STATE_PLAYING) //prevent double clicks
             return;
 
         val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -132,6 +136,48 @@ class MediaSessionCallbacks(val service: PlayerService, val mediaSession: MediaS
         val notification = createNotification()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         service.stopForeground(false)
+    }
+
+    override fun onPlayFromMediaId(mediaId: String, extras: Bundle?) {
+        service.setMedia(mediaId)
+        newMediaSet()
+    }
+
+    override fun onSkipToNext() {
+        service.nextSong()
+        newMediaSet()
+    }
+
+    override fun onSkipToPrevious() {
+        service.prevSong()
+        newMediaSet()
+    }
+
+    private fun newMediaSet() {
+        if (mediaSession.controller.playbackState.state == PlaybackStateCompat.STATE_PLAYING) { //if player was playing then we need only to start it again
+            mediaPlayer.start()
+
+            mediaSession.setPlaybackState(
+                PlaybackStateCompat.Builder(mediaSession.controller.playbackState)
+                    .setState(PlaybackStateCompat.STATE_PLAYING, 0, mediaPlayer.playbackParams.speed)
+                    .build()
+            )
+
+            val notification = createNotification()
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
+        }
+        else
+            onPlay()
+    }
+
+    override fun onSeekTo(pos: Long) {
+        mediaPlayer.seekTo(pos.toInt())
+
+        mediaSession.setPlaybackState(
+            PlaybackStateCompat.Builder(mediaSession.controller.playbackState)
+                .setState(PlaybackStateCompat.STATE_PLAYING, mediaPlayer.currentPosition.toLong(), mediaPlayer.playbackParams.speed)
+                .build()
+        )
     }
 
     override fun onAudioFocusChange(focusChange: Int) {
